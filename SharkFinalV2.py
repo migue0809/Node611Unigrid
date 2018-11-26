@@ -1,4 +1,3 @@
-#import modules
 import spidev
 import time
 import os
@@ -50,7 +49,7 @@ try:
                   bus_adc=ina.ADC_128SAMP,
                   shunt_adc=ina.ADC_128SAMP)
 except:
-    pass 
+    time.sleep(0.1)
 #Configuration SPI Port and device
 SPI_PORT   = 0
 SPI_DEVICE = 0
@@ -65,51 +64,56 @@ GPIO.setup(26, GPIO.OUT)
 a=0
 GPIO.output(20, False)
 GPIO.output(26, True)
-#Location of the meter
-try:
-    SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB0', 1) # port name, slave add$ 
-except:
-    pass
-try:
-    SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB1', 1) # port name, slave add$ 
-except:
-    pass
-try:
-    SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB2', 1) # port name, slave add$ 
-except:
-    pass
-try:
-    SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB3', 1) # port name, slave add$ 
-except:
-    pass
-try:
-    SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB4', 1) # port name, slave add$ 
-except:
-    pass
-try:
-    SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB5', 1) # port name, slave add$ 
-except:
-    pass
-try:
-    SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB6', 1) # port name, slave add$ 
-except:
-    pass
-try:
-    SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB7', 1) # port name, slave add$ 
-except:
-    pass
-try:
-    SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB8', 1) # port name, slave add$ 
-except:
-    pass
-try:
-    SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB9', 1) # port name, slave add$ 
-except:
-    pass
-print(SharkMeter)
 t=0
 #Cycle for to take measures
 while True:
+    #Location of the meter
+    try:
+        SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB0', 1) # port name, slave add$ 
+    except:
+        pass
+    try:
+        SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB1', 1) # port name, slave add$ 
+    except:
+        pass
+    try:
+        SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB2', 1) # port name, slave add$ 
+    except:
+        pass
+    try:
+        SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB3', 1) # port name, slave add$ 
+    except:
+        pass
+    try:
+        SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB4', 1) # port name, slave add$ 
+    except:
+        pass
+    try:
+        SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB5', 1) # port name, slave add$ 
+    except:
+        pass
+    try:
+        SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB6', 1) # port name, slave add$ 
+    except:
+        pass
+    try:
+        SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB7', 1) # port name, slave add$ 
+    except:
+        pass
+    try:
+        SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB8', 1) # port name, slave add$ 
+    except:
+        pass
+    try:
+        SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB9', 1) # port name, slave add$ 
+    except:
+        pass
+    #Verification of the meter
+    try:
+        print(SharkMeter)
+        Z=1
+    except:
+        Z=0
     #Initialization of sensors
     S1 = 0
     S2 = 0
@@ -171,14 +175,14 @@ while True:
     #If the current sensor values of the first buck and the solar panel
     # are lower than a set value and the inverter sensor current is greater than a set value
     #you must disconnect the non-essential load
-    if (S_1<0.5 and S_2<0.5 and S_5>0.09):
+    if (S_1<0.5 and S_2<0.50 and S_5>0.09):
 	    GPIO.output(16, False)
 	    print("Carga desconectada")
 	    ctrl=str(0)
     #If the current sensor values of the first buck or solar panel are higher
     #than a set value and the inverter sensor current is greater than a set value,
     #you must disconnect the non-essential load
-    elif (S_1>0.5 or S_2>0.5 and S_5>0.09): 
+    elif (S_1>=0.5 or S_2>=0.50 and S_5>=0.09): 
 	    GPIO.output(16, True)
 	    print("Carga conectada")
 	    ctrl=str(1)
@@ -187,7 +191,7 @@ while True:
     i1 = round(ina1.current()/1000,2)
     i2 = round(ina2.current()/1000,2)
     i3 = round(ina3.current()/1000,2)
-    #Verification of charge current for the battery. Charging mode
+    #Verification of charge current for the battery.Charging mode
     if (S_4>=0.35):
         GPIO.output(20, False)
         GPIO.output(26, True)
@@ -228,11 +232,11 @@ while True:
     #Calculation of panel voltage
     Vp = ((2.5+S_2*0.1)*6)
     #Power of the panel
-    Pp = str(round((Vp)*S_2,2))
+    Pp = str(round((S_7+1)*S_2,2))
     #Calculation of battery current
     Ib = S_5-S_3+S_4
     #Power of the battery
-    Pb = str(abs(round((S_8)*Ib,2)))
+    Pb = str(round((S_8)*Ib,2))
     #Conversion to string
     i=str(i)
     i1=str(i1)
@@ -266,10 +270,15 @@ while True:
     print("Potencia de la bateria = "+Pb)
     a=a+1	
     print("Iteracion ="+str(a))
-    #Iteration counter to communicate
     n=0
-    while  n<50:
-	## Voltage AB
+    print(Z)
+    #Verification connection of the meter and iteration counter
+    if (Z==1):
+        m=60
+    elif (Z==0):
+        m=5
+    while  n<m:
+	# Voltage AB 
 	try:
             fVoltageAB = SharkMeter.read_float(1005,3,2)
             VNAB = str(round(fVoltageAB/210.0,2))
@@ -281,7 +290,7 @@ while True:
             VoltageAB = set()
        
 
-    ## Voltage BC
+    #Voltage BC
     	try:
             fVoltageBC=SharkMeter.read_float(1007,3,2)
             VNBC = str(round(fVoltageBC/210.0,2))
@@ -291,7 +300,7 @@ while True:
     	except:
             VoltageBC = set()
         
-	## Voltage CA
+	#Voltage CA
     	try:
 	    fVoltageCA=SharkMeter.read_float(1009,3,2)
 	    VNCA = str(round(fVoltageCA/210.0,2))
@@ -302,7 +311,7 @@ while True:
             VoltageCA = set()
         
 	
-	## Voltage AN
+	#Voltage AN
     	try:
             fVoltageA = SharkMeter.read_float(999,3,2)
 	    VoltageA = str(round(fVoltageA,2))
@@ -311,7 +320,7 @@ while True:
     	except:
             VoltageA = set()
 
-	## Voltage BN
+	#Voltage BN
     	try:
             fVoltageB=SharkMeter.read_float(1001,3,2)
 	    VoltageB=str(round(fVoltageB,2))
@@ -320,7 +329,7 @@ while True:
     	except:
             VoltageB = set()
         
-	## Voltage CN
+	#Voltage CN
     	try:
             fVoltageC=SharkMeter.read_float(1003,3,2)
 	    VoltageC=str(round(fVoltageC,2))
@@ -329,7 +338,7 @@ while True:
     	except:
             VoltageC = set()
        
-	##Current A
+	#Current A
     	try:
             fAmpA = SharkMeter.read_float(1011,3,2)
 	    AmpA=str(round(fAmpA,2))
@@ -339,7 +348,7 @@ while True:
             AmpA = set()
         
 
-	##Current B
+	#Current B
     	try:
 	    fAmpB = SharkMeter.read_float(1013,3,2)
 	    AmpB=str(round(fAmpB,2))
@@ -349,7 +358,7 @@ while True:
             AmpB = set()
         	
 
-	##Current C
+	#Current C
     	try:
 	    fAmpC = SharkMeter.read_float(1015,3,2)
 	    AmpC=str(round(fAmpC,2))
@@ -362,14 +371,14 @@ while True:
 	#Power Active
     	try:
 	    fWatt = SharkMeter.read_float(1017,3,2)
-	    Watt=str(round((fWatt/1000.0),3))
+	    Watt=str(round((fWatt),3))
 	    print("Potencia Activa Total = "+Watt)
 	
     	except:
             Watt = set()
         
 
-	#Energy active
+	##Energy active
     	try:
 	    fwatth = SharkMeter.read_long(1105,3,True)*10
 	    Watth=str(fwatth/1000.0)
@@ -382,7 +391,7 @@ while True:
 	#Power reactive
     	try:
 	    fVar = SharkMeter.read_float(1019,3,2)
-	    Var = str(round((fVar/1000.0),3))
+	    Var = str(round((fVar),3))
 	    print("Potencia Reactiva Total = "+Var)
     	except:
             Var = set()
@@ -401,14 +410,14 @@ while True:
 	#Power apparent
     	try:
 	    fVas = SharkMeter.read_float(1021,3,2)
-	    Vas = str(round((fVas/1000.0),3))
+	    Vas = str(round((fVas),3))
 	    print("Potencia Aparente Total = "+Vas)
 	
     	except:
             Vas = set()
         
 
-	#Energy apparent 
+	##Energy apparent 
     	try:
 	    fVash = SharkMeter.read_long(1115,3,True)*10
 	    Vash=str(fVash/1000.0)
@@ -505,14 +514,14 @@ while True:
     	except:
             VCAPhase = set()
         print(n)
-        #Angle verification 
+        #Angle verification
         if len(VCAPhase)!=0 and len(VABPhase)!=0 and len(VBCPhase)!=0 and len(AmpPA)!=0 and len(AmpPB)!=0 and len(AmpPC)!=0:
             break
         n=n+1
     t=t+1
     print(t)
     print(str(date.now()))
-    try:
+    if len(VCAPhase)!=0 and len(VABPhase)!=0 and len(VBCPhase)!=0 and len(AmpPA)!=0 and len(AmpPB)!=0 and len(AmpPC)!=0:
         #Sending to the database
         response0 = requests.get('http://104.236.0.105:8080/line_voltages_phases?vab=%s&pab=%s&vbc=%s&pbc=%s&vca=%s&pca=%s&create=%s'%(VoltageAB, VABPhase, VoltageBC, VBCPhase, VoltageCA, VCAPhase,str(date.now())),
                         auth=requests.auth.HTTPBasicAuth(
@@ -544,6 +553,8 @@ while True:
                             auth=requests.auth.HTTPBasicAuth(
                               'admin',
                               'uninorte'))
+    #Sending to the database
+    try:
         response6 = requests.get('http://104.236.0.105:8080/voltage_sensors?voltage1=%s&voltage2=%s&voltage3=%s&create=%s'%(S_6,S_7,S_8, str(date.now())),
                             auth=requests.auth.HTTPBasicAuth(
                               'admin',
@@ -552,7 +563,7 @@ while True:
                             auth=requests.auth.HTTPBasicAuth(
                               'admin',
                               'uninorte'))
-        response8 = requests.get('http://104.236.0.105:8080/high_current_sensors?current5=%s&current6=%s&current7=%s&current8%s&current9=%s&create=%s'%(S_1,S_2,S_3,S_4,S_5,str(date.now())),
+        response8 = requests.get('http://104.236.0.105:8080/high_current_sensors?current5=%s&current6=%s&current7=%s&current8=%s&current9=%s&create=%s'%(S_1,S_2,S_3,S_4,S_5,str(date.now())),
                             auth=requests.auth.HTTPBasicAuth(
                               'admin',
                               'uninorte'))
@@ -560,6 +571,7 @@ while True:
                             auth=requests.auth.HTTPBasicAuth(
                               'admin',
                               'uninorte'))
+        print('Estado del control '+ctrl)
         response10 = requests.get('http://104.236.0.105:8080/control?state=%s&create=%s'%(ctrl, str(date.now())),
                             auth=requests.auth.HTTPBasicAuth(
                               'admin',

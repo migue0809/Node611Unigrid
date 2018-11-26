@@ -17,7 +17,7 @@ while True:
     #Iteration counter to communicate
     n=0
     while  n<50:
-	## Voltaje de linea A con linea B
+	## Voltage AB
 	try:
             fVoltageAB = SharkMeter.read_float(1005,3,2)
 	    VoltageAB = str(round(fVoltageAB,2))
@@ -28,7 +28,7 @@ while True:
             VoltageAB = set()
        
 
-    ## Voltaje de linea B con linea C
+    ## Voltage BC
     	try:
             fVoltageBC=SharkMeter.read_float(1007,3,2)
 	    VoltageBC=str(round(fVoltageBC,2))
@@ -37,7 +37,7 @@ while True:
     	except:
             VoltageBC = set()
         
-	## Voltaje de linea C con linea A
+	## Voltage CA
     	try:
 	    fVoltageCA=SharkMeter.read_float(1009,3,2)
 	    VoltageCA=str(round(fVoltageCA,2))
@@ -47,7 +47,7 @@ while True:
             VoltageCA = set()
         
 	
-	## Voltaje de linea A con Neutro
+	## Voltage AN
     	try:
             fVoltageA = SharkMeter.read_float(999,3,2)
 	    VoltageA = str(round(fVoltageA,2))
@@ -56,7 +56,7 @@ while True:
     	except:
             VoltageA = set()
 
-	## Voltaje de linea B con Neutro
+	## Voltage BN
     	try:
             fVoltageB=SharkMeter.read_float(1001,3,2)
 	    VoltageB=str(round(fVoltageB,2))
@@ -65,7 +65,7 @@ while True:
     	except:
             VoltageB = set()
         
-	## Voltaje de linea C con Neutro
+	## Voltage CN
     	try:
             fVoltageC=SharkMeter.read_float(1003,3,2)
 	    VoltageC=str(round(fVoltageC,2))
@@ -74,7 +74,7 @@ while True:
     	except:
             VoltageC = set()
        
-	##Corriente de linea A
+	##Current A
     	try:
             fAmpA = SharkMeter.read_float(1011,3,2)
 	    AmpA=str(round(fAmpA,2))
@@ -84,7 +84,7 @@ while True:
             AmpA = set()
         
 
-	##Corriente de linea B
+	##Current B
     	try:
 	    fAmpB = SharkMeter.read_float(1013,3,2)
 	    AmpB=str(round(fAmpB,2))
@@ -94,7 +94,7 @@ while True:
             AmpB = set()
         	
 
-	##Corriente de linea C
+	##Current C
     	try:
 	    fAmpC = SharkMeter.read_float(1015,3,2)
 	    AmpC=str(round(fAmpC,2))
@@ -104,7 +104,7 @@ while True:
             AmpC = set()
         	
 
-	##Potencia Activa
+	##Power active
     	try:
 	    fWatt = SharkMeter.read_float(1017,3,2)
 	    Watt=str(round(fWatt,2)/1000.0)
@@ -114,7 +114,7 @@ while True:
             Watt = set()
         
 
-	##Energia Activa
+	##Energy active
     	try:
 	    fwatth = SharkMeter.read_long(1105,3,True)*10
 	    Watth=str(fwatth/1000.0)
@@ -124,7 +124,7 @@ while True:
             Watth = set()
         
 	
-	##Potencia Reactiva
+	##Power reactive
     	try:
 	    fVar = SharkMeter.read_float(1019,3,2)
 	    Var = str(round(fVar,2)/1000.0)
@@ -133,7 +133,7 @@ while True:
             Var = set()
         
 
-	##Energia Reactiva
+	##Energy reactive
     	try:
 	    fVarh = SharkMeter.read_long(1113,3,True)*10
 	    Varh=str((fVarh/1000.0))
@@ -143,7 +143,7 @@ while True:
             Varh = set()
         
 
-	##Potencia Aparente
+	##Power apparent 
     	try:
 	    fVas = SharkMeter.read_float(1021,3,2)
 	    Vas = str(round(fVas,2)/1000.0)
@@ -153,7 +153,7 @@ while True:
             Vas = set()
         
 
-	##Energia Aparente
+	##Energy apparent 
     	try:
 	    fVash = SharkMeter.read_long(1115,3,True)*10
 	    Vash=str(fVash/1000.0)
@@ -163,7 +163,7 @@ while True:
             Vash = set()
         
 
-	##Factor de potencia
+	##Power factor
     	try:
 	    fFp = SharkMeter.read_float(1023,3,2)
 	    Fp = str(round(fFp,2))
@@ -173,7 +173,7 @@ while True:
             Fp = set()
         
 
-	##Frecuencia
+	##Frequency
     	try:
 	    fFreq = SharkMeter.read_float(1025,3,2)
 	    Freq = str(round(fFreq,2))
@@ -183,7 +183,7 @@ while True:
             fFreq = set()
         
 
-	## Angulo de corriente linea A
+	##Current angle A
 	try:
             fAmpPA = SharkMeter.read_register(4099,1,3,True)
             AmpPA = str(int(fAmpPA))
@@ -193,7 +193,7 @@ while True:
             AmpPA = set()
 		
 
-	## Angulo de corriente linea B
+	##Current angle B
     	try:
             fAmpPB = SharkMeter.read_register(4100,1,3,True)
             if fAmpB!=0:
@@ -208,7 +208,7 @@ while True:
             AmpPB = set()
 		
 
-	## Angulo de corriente linea C
+	##Current angle C
     	try:	
 	    fAmpPC = SharkMeter.read_register(4101,1,3,True)
             if fAmpC!=0:
@@ -223,7 +223,7 @@ while True:
             AmpPC = set()
 			
 
-	## Angulo entra fase A y B
+	## Angle AB
     	try:	
 	    fVABPhase = SharkMeter.read_register(4102,1,3,True) + 120
 	    VABPhase = str(int(fVABPhase))
@@ -233,7 +233,7 @@ while True:
             VABPhase = set()
         
 	
-	## Angulo entra fase B y C
+	## Angle BC
     	try:	
 	    fVBCPhase = SharkMeter.read_register(4103,1,3,True) + 240
 	    VBCPhase = str(int(fVBCPhase)) 
@@ -242,7 +242,7 @@ while True:
             VBCPhase = set()
         
 	
-	## Angulo entra fase C y A
+	## Angle CA
     	try:	
 	    fVCAPhase = SharkMeter.read_register(4104,1,3,True)
 	    VCAPhase=str(int(fVCAPhase))
@@ -256,6 +256,7 @@ while True:
     t=t+1
     print(t)
     print(str(date.now()))
+    #Sending to the database
     try:
         response0 = requests.get('http://104.236.0.105:8080/line_voltages_phases?vab=%s&pab=%s&vbc=%s&pbc=%s&vca=%s&pca=%s&create=%s'%(VoltageAB, VABPhase, VoltageBC, VBCPhase, VoltageCA, VCAPhase,str(date.now())),
                         auth=requests.auth.HTTPBasicAuth(
