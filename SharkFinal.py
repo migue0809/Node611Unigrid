@@ -1,3 +1,4 @@
+#import modules
 import spidev
 import time
 import os
@@ -11,6 +12,7 @@ import Adafruit_GPIO.SPI as SPI
 import RPi.GPIO as GPIO
 import serial
 from ina219 import INA219
+#Sensor and I2C configuration
 try:
     ina = INA219(shunt_ohms=0.1,
                  max_expected_amps = 2.0,
@@ -49,14 +51,21 @@ try:
                   shunt_adc=ina.ADC_128SAMP)
 except:
     pass 
+#Configuration SPI Port and device
 SPI_PORT   = 0
 SPI_DEVICE = 0
 mcp = Adafruit_MCP3008.MCP3008(spi=SPI.SpiDev(SPI_PORT, SPI_DEVICE))
+#Configuration pin output
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 GPIO.cleanup()
 GPIO.setup(16, GPIO.OUT)
+GPIO.setup(20, GPIO.OUT)
+GPIO.setup(26, GPIO.OUT)
 a=0
+GPIO.output(20, False)
+GPIO.output(26, True)
+#Location of the meter
 try:
     SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB0', 1) # port name, slave add$ 
 except:
@@ -99,7 +108,9 @@ except:
     pass
 print(SharkMeter)
 t=0
+#Cycle for to take measures
 while True:
+    #Initialization of sensors
     S1 = 0
     S2 = 0
     S3 = 0
@@ -111,6 +122,7 @@ while True:
 
     t = 0
     while t<120:
+        #Reading of each adc channel
 	A1 = mcp.read_adc(2)
 	A2 = mcp.read_adc(7)
 	A3 = mcp.read_adc(3)
@@ -119,6 +131,7 @@ while True:
 	V1 = mcp.read_adc(4)
 	V2 = mcp.read_adc(5)
 	V3 = mcp.read_adc(6)
+	#Sum of each measure
 	S1 = S1 + A1
 	S2 = S2 + A2
 	S3 = S3 + A3
@@ -130,57 +143,97 @@ while True:
 
 	t = t + 1
     m = 120
-
-    S_1 = ((((S1/m)+7)*(5.0/1023))-2.5)/(0.095)
-    S_2 = ((((S2/m)+5)*(5.0/1023))-2.5)/(0.063)
-    S_3 = ((((S3/m)+5)*(5.0/1023))-2.5)/(0.090)
-    S_4 = ((((S4/m)+5)*(5.0/1023))-2.5)/(0.095)
-    S_5 = ((((S5/m)+5)*(5.0/1023))-2.5)/(0.088)
-    S_6 = (((S6/m)*(5.0/1023))*(37000.0/7500.0))*14.4594417077 
-    S_7 = (((S7/m)*(5.0/1023))*(37000.0/7500.0))*13.4594417077
+    #Value for zero adjustment of the sensors
+    Aju=12
+    #Conversion of digital value to analog
+    S_1 = ((((S1/m)-Aju)*(5.0/1023))-2.5)/(0.115)
+    S_2 = ((((S2/m)-Aju)*(5.0/1023))-2.5)/(0.115)
+    S_3 = ((((S3/m)-Aju)*(5.0/1023))-2.5)/(0.091)
+    S_4 = ((((S4/m)-Aju)*(5.0/1023))-2.5)/(0.115)
+    S_5 = ((((S5/m)-Aju)*(5.0/1023))-2.5)/(0.092)
+    S_6 = (((S6/m)*(5.0/1023))*(37000.0/7500.0))*14.5 
+    S_7 = (((S7/m)*(5.0/1023))*(37000.0/7500.0))*12.5
     S_8 = ((S8/m)*(5.0/1023))*(37000.0/7500.0)
     
     p = 1.0
+    #Adjustment of source voltage sensor due to failure of a source
     while (p<10.0):
-        if (S_1>p and S_1<(p+1.0)):
-            S_6 = S_6+((3.2*p)-(p-1))
-            S_7 = S_7-1.5*(p-1)
-            S_8 = S_8-(p-1)/2
+        if (S_1>(p+0.5) and S_1<(p+1.5)):
+            S_6 = S_6+(2*p)
+            S_7 = S_7-(1.5*p)
+            S_8 = S_8-(p+1)/2
             break
-        p=p+1
+        p=p+1.0
+    #Condition that Current sensor of the first buck is zero, the voltage of the sources is zero
     if(S_1<0.05):
         S_6=0.0
+    #Condition for disconnection of non-essential load
+    #If the current sensor values of the first buck and the solar panel
+    # are lower than a set value and the inverter sensor current is greater than a set value
+    #you must disconnect the non-essential load
     if (S_1<0.5 and S_2<0.5 and S_5>0.09):
 	    GPIO.output(16, False)
 	    print("Carga desconectada")
-	    ctrl=str(1)
-
+	    ctrl=str(0)
+    #If the current sensor values of the first buck or solar panel are higher
+    #than a set value and the inverter sensor current is greater than a set value,
+    #you must disconnect the non-essential load
     elif (S_1>0.5 or S_2>0.5 and S_5>0.09): 
 	    GPIO.output(16, True)
 	    print("Carga conectada")
-	    ctrl=str(0)
-    v = ina.voltage()
+	    ctrl=str(1)
+    #Take values of each low current sensor
     i = round(ina.current()/1000,2)
-    p = ina.power()
-
-    v1 = ina1.voltage()
     i1 = round(ina1.current()/1000,2)
-    p1 = ina1.power()
-
-    v2 = ina2.voltage()
     i2 = round(ina2.current()/1000,2)
-    p2 = ina2.power()
-
-    v3 = ina3.voltage()
     i3 = round(ina3.current()/1000,2)
-    p3 = ina3.power()
-    
+    #Verification of charge current for the battery. Charging mode
+    if (S_4>=0.35):
+        GPIO.output(20, False)
+        GPIO.output(26, True)
+    #Condition for change of charging mode to bypass mode
+    elif (S_4<0.35):
+        GPIO.output(26, False)
+        GPIO.output(20, True)
+   	if (S_5-S_3<=0.7):
+       		 GPIO.output(26, False)
+       		 GPIO.output(20, True)
+    #Condition for change of bypass mode to charging mode
+    if (S_5-S_3>0.7):
+        GPIO.output(20, False)
+        GPIO.output(26, True)
+    #Change of currents less than 0 to a value close to 0 but positive
+    if(i<=0.0):
+        i=0.01
+    if(i1<=0.0):
+        i1=0.01
+    if(i2<=0.0):
+        i2=0.01
+    if(i3<=0.0):
+        i3=0.01
+    if(S_1<=0.0):
+        S_1=0.01
+    if(S_2<=0.0):
+        S_2=0.01
+    if(S_3<=0.0):
+        S_3=0.01
+    if(S_4<=0.0):
+        S_4=0.01
+    if(S_5<=0.0):
+        S_5=0.01
+    #Sum of the currents of each source
     If = i+i1+i2+i3
+    #Power of the source
     Pf = str(round(If*S_6,2))
+    #Calculation of panel voltage
     Vp = ((2.5+S_2*0.1)*6)
+    #Power of the panel
     Pp = str(round((Vp)*S_2,2))
-    Ib = S_5-S_3
-    Pb = str(abs(round((S_8+1)*Ib,2)))
+    #Calculation of battery current
+    Ib = S_5-S_3+S_4
+    #Power of the battery
+    Pb = str(abs(round((S_8)*Ib,2)))
+    #Conversion to string
     i=str(i)
     i1=str(i1)
     i2=str(i2)
@@ -193,7 +246,8 @@ while True:
     S_6=str(round(S_6,2))
     S_7=str(round(S_7,2))
     S_8=str(round(S_8,2))
-    #Vistos de izquierda a derecha
+    #Print values of each sensor
+    #Sensors viewed from left to right and from bottom to top
     print("Corriente sensor 1 = "+i)   ## Sensor de corriente 1 de I2C
     print("Corriente sensor 2 = "+i1)	## Sensor de corriente 2 de I2C
     print("Corriente sensor 3 = "+i2)	## Sensor de corriente 3 de I2C

@@ -1,3 +1,4 @@
+#import modules
 import spidev
 import time
 import os
@@ -11,9 +12,7 @@ from datetime import datetime as date
 from time import sleep
 from ina219 import INA219
 
-
-
-
+#Sensor and I2C configuration
 ina = INA219(shunt_ohms=0.1,
              max_expected_amps = 2.0,
              address=0x40)
@@ -49,9 +48,11 @@ ina3.configure(voltage_range=ina.RANGE_32V,
               gain=ina.GAIN_AUTO,
               bus_adc=ina.ADC_128SAMP,
               shunt_adc=ina.ADC_128SAMP)
+#Configuration SPI Port and device
 SPI_PORT   = 0
 SPI_DEVICE = 0
 mcp = Adafruit_MCP3008.MCP3008(spi=SPI.SpiDev(SPI_PORT, SPI_DEVICE))
+#Configuration pin output
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 GPIO.cleanup()
@@ -61,7 +62,9 @@ GPIO.setup(26, GPIO.OUT)
 a=0
 GPIO.output(20, False)
 GPIO.output(26, True)
+#Cycle for to take measures
 while True:
+    #Initialization of sensors
     S1 = 0
     S2 = 0
     S3 = 0
@@ -72,12 +75,14 @@ while True:
     S8 = 0
 
     t = 0
+    #Take values of each low current sensor
     i = round(ina.current()/1000,2)
     i1 = round(ina1.current()/1000,2)
     i2 = round(ina2.current()/1000,2)
     i3 = round(ina3.current()/1000,2)
-    iajus=i+i1+i2+i3
+    
     while t<120:
+        #Reading of each adc channel
     	A1 = mcp.read_adc(2)
     	A2 = mcp.read_adc(7)
     	A3 = mcp.read_adc(3)
@@ -86,6 +91,7 @@ while True:
     	V1 = mcp.read_adc(4)
     	V2 = mcp.read_adc(5)
     	V3 = mcp.read_adc(6)
+    	#Sum of each measure
     	S1 = S1 + A1
     	S2 = S2 + A2
     	S3 = S3 + A3
@@ -97,12 +103,10 @@ while True:
     
     	t = t + 1
     m = 120
-    if (iajus<0.2):
-        Aju=(S1/m)-513
-    if (iajus>0.2):
-        Aju=(S2/m)-513
-
+    #Value for zero adjustment of the sensors
     Aju=12
+    #Conversion of digital value to analog
+    
     S_1 = (((((S1/m)-Aju)*(5.0/1023))-2.5)/(0.115))
     S_2 = (((((S2/m)-Aju)*(5.0/1023))-2.5)/(0.115))
     S_3 = (((((S3/m)-Aju)*(5.0/1023))-2.5)/(0.091))
@@ -113,35 +117,46 @@ while True:
     S_8 = ((S8/m)*(5.0/1023))*(37000.0/7500.0)
 
     p = 1.0
+    #Adjustment of source voltage sensor due to failure of a source
     while (p<10.0):
         if (S_1>(p+0.5) and S_1<(p+1.5)):
             S_6 = S_6+(2*p)
             S_7 = S_7-(1.5*p)
             S_8 = S_8-(p+1)/2
             break
-        p=p+1
+        p=p+1.0
+    #Condition that Current sensor of the first buck is zero, the voltage of the sources is zero
     if(S_1<0.05):
         S_6=0.0
-    if (S_1<0.2 and S_2<0.2 and S_5>0.09):
+    #Condition for disconnection of non-essential load
+    #If the current sensor values of the first buck and the solar panel
+    # are lower than a set value and the inverter sensor current is greater than a set value
+    #you must disconnect the non-essential load
+    if (S_1<0.5 and S_2<0.5 and S_5>0.09):
 	    GPIO.output(16, False)
 	    print("Carga desconectada")
-
-    elif (S_1>0.2 or S_2>0.2 and S_5>0.09): 
+    #If the current sensor values of the first buck or solar panel are higher
+    #than a set value and the inverter sensor current is greater than a set value,
+    #you must disconnect the non-essential load
+    elif (S_1>0.5 or S_2>0.5 and S_5>0.09): 
 	    GPIO.output(16, True)
 	    print("Carga conectada")
+    #Verification of charge current for the battery.Charging mode
     if (S_4>=0.35):
         GPIO.output(20, False)
         GPIO.output(26, True)
+    #Condition for change of charging mode to bypass mode
     elif (S_4<0.35):
         GPIO.output(26, False)
         GPIO.output(20, True)
    	if (S_5-S_3<=0.7):
        		 GPIO.output(26, False)
        		 GPIO.output(20, True)
+    #Condition for change of bypass mode to charging mode
     if (S_5-S_3>0.7):
         GPIO.output(20, False)
         GPIO.output(26, True)
-
+    #Change of currents less than 0 to a value close to 0 but positive
     if(i<=0.0):
         i=0.01
     if(i1<=0.0):
@@ -160,6 +175,7 @@ while True:
         S_4=0.01
     if(S_5<=0.0):
         S_5=0.01
+    #Reassignment for the calculation of the drop in the diodes
     i4=S_1
     i5=S_2
     if S_3==S_4:
@@ -168,12 +184,19 @@ while True:
         i6=abs(S_3-S_4)
     i7=S_4
     i8=abs(S_5-S_3+S_4)
+    #Sum of the currents of each source
     If = i+i1+i2+i3
+    #Power of the source
     Pf = str(round(If*S_6,2))
+    #Calculation of panel voltage
     Vp = ((2.5+S_2*0.1)*6)
+    #Power of the panel
     Pp = str(round(Vp*S_2,2))
-    Ib = S_5-S_3
+    #Calculation of battery current
+    Ib = S_5-S_3+S_4
+    #Power of the battery
     Pb = str(abs(round(S_8*Ib,2)))
+    #Calculation of voltage drop diodes
     VD0_AB=round(0.0326*log(i)+0.7812,3)
     VD1_AB=round(0.0326*log(i1)+0.7812,3)
     VD2_AB=round(0.0326*log(i2)+0.7812,3)
@@ -183,7 +206,7 @@ while True:
     VD6_AB=round(0.0326*log(i6)+0.7812,3)
     VD7_AB=round(0.0326*log(i7)+0.7812,3)
     VD8_AB=round(0.0326*log(i8)+0.7812,3)
-    
+    #Voltage before the diodes
     VAD0=VD0_AB+S_6
     VAD1=VD1_AB+S_6
     VAD2=VD2_AB+S_6
@@ -192,6 +215,7 @@ while True:
     VAD5=VD5_AB+S_7
     VAD6=VD6_AB+S_8
     VAD8=VD8_AB+S_8
+    #Print of diode drops
     print("Voltaje Diodo 0 "+str(VD0_AB))
     print("Voltaje Diodo 1 "+str(VD1_AB))
     print("Voltaje Diodo 2 "+str(VD2_AB))
@@ -202,7 +226,7 @@ while True:
     print("Voltaje Diodo 7 "+str(VD7_AB))
     print("Voltaje Diodo 8 "+str(VD8_AB))
 
-    #Potencias antes de diodos
+    #Power before the diodes
     PAD0=VAD0*i
     PAD1=VAD1*i1
     PAD2=VAD2*i2
@@ -212,6 +236,7 @@ while True:
     PAD6=VAD6*i6
     PAD7=VAD6*i7
     PAD8=VAD8*i8
+    # Print of powers before diodes
     print("Potencia antes del Diodo 0 "+str(PAD0))
     print("Potencia antes del Diodo 1 "+str(PAD1))
     print("Potencia antes del Diodo 2 "+str(PAD2))
@@ -221,7 +246,7 @@ while True:
     print("Potencia antes del Diodo 6 "+str(PAD6))
     print("Potencia antes del Diodo 7 "+str(PAD7))
     print("Potencia antes del Diodo 8 "+str(PAD8))
-    #Potencias despues diodos
+    #Powers after diodes
     PDD0=S_6*i
     PDD1=S_6*i1
     PDD2=S_6*i2
@@ -231,6 +256,7 @@ while True:
     PDD6=S_8*i6
     PDD7=VAD8*i7
     PDD8=S_8*i8
+    #Print of powers after diodes
     print("Potencia despues del Diodo 0 "+str(PDD0))
     print("Potencia despues del Diodo 1 "+str(PDD1))
     print("Potencia despues del Diodo 2 "+str(PDD2))
@@ -240,7 +266,7 @@ while True:
     print("Potencia despues del Diodo 6 "+str(PDD6))
     print("Potencia despues del Diodo 7 "+str(PDD7))
     print("Potencia despues del Diodo 8 "+str(PDD8))
-
+    #Conversion to string
     PD1=str(round(VD1_AB*i1,3))
     PD2=str(round(VD2_AB*i2,3))
     PD3=str(round(VD3_AB*i3,3))
@@ -249,20 +275,25 @@ while True:
     PD6=str(round(VD6_AB*i6,3))
     PD7=str(round(VD7_AB*i7,3))
     PD8=str(round(VD8_AB*i8,3))
+    #Voltage after first buck
     VAfterBuck=round(S_7+VD4_AB,3)
-    
+    #Power before first buck
     PBeforeBuck=Pf
     if If<0.1:
         S_1=0.0
+    #Power after first buck
     PAfterBuck=str(round((VAfterBuck*S_1),1))
     
         
-    
+    #Power before second buck
     PBeforeBuck1=str(round((S_7*(i4+i5)),1))
+    #Voltage after second buck
     VAfterBuck1=round(S_8+VD6_AB,1)
+    #Power after second buck
     PAfterBuck1=str(round(VAfterBuck1*S_3,1))
+    #Power before inverter
     PBeforeInverter=str(round(S_8*S_5,1))
-
+    #Conversion to string
     i=str(i)
     i1=str(i1)
     i2=str(i2)
@@ -275,7 +306,7 @@ while True:
     S_6=str(round(S_6,2))
     S_7=str(round(S_7,2))
     S_8=str(round(S_8,2))
-    
+    #Creation files txt for power before and after diodes
     fichero = open('Diodo0.txt', 'a')
     fichero.write(str(PAD0)+os.linesep)
     fichero.write(str(PDD0)+os.linesep)
@@ -326,7 +357,8 @@ while True:
         
 
 
-    #Vistos de izquierda a derecha
+    #Print values of each sensor
+    #Sensors viewed from left to right and from bottom to top
     print("Corriente sensor 1 = "+i)   ## Sensor de corriente 1 de I2C
     print("Corriente sensor 2 = "+i1)	## Sensor de corriente 2 de I2C
     print("Corriente sensor 3 = "+i2)	## Sensor de corriente 3 de I2C
