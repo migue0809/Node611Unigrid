@@ -1,3 +1,4 @@
+#import modules
 import spidev
 import time
 import os
@@ -8,11 +9,12 @@ import serial
 import requests
 from datetime import datetime as date
 
-
+#Location of the meter
 SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB0', 1) # port name, slave add$ 
 print(SharkMeter)
 t=0
 while True:
+    #Iteration counter to communicate
     n=0
     while  n<50:
 	## Voltaje de linea A con linea B
