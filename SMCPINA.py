@@ -1,3 +1,4 @@
+#import modules
 import spidev
 import time
 import os
@@ -10,20 +11,8 @@ import requests
 from datetime import datetime as date
 from time import sleep
 from ina219 import INA219
-from Tkinter import *
 
-root=Tk()
-Frame=Frame(root,width=750,height=400)
-
-imagen_de_fondo = PhotoImage(file="Esq.gif")
-fondo = Label(root, image=imagen_de_fondo).place(x=0,y=0)
-Frame.pack()
-D0=StringVar()
-D1=StringVar()
-D2=StringVar()
-D3=StringVar()
-PBB=StringVar()
-PAB=StringVar()
+#Sensor and I2C configuration
 ina = INA219(shunt_ohms=0.1,
              max_expected_amps = 2.0,
              address=0x40)
@@ -59,15 +48,19 @@ ina3.configure(voltage_range=ina.RANGE_32V,
               gain=ina.GAIN_AUTO,
               bus_adc=ina.ADC_128SAMP,
               shunt_adc=ina.ADC_128SAMP)
+#Configuration SPI Port and device
 SPI_PORT   = 0
 SPI_DEVICE = 0
 mcp = Adafruit_MCP3008.MCP3008(spi=SPI.SpiDev(SPI_PORT, SPI_DEVICE))
+#Configuration pin output
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
 GPIO.cleanup()
 GPIO.setup(16, GPIO.OUT)
 a=0
+#Cycle for to take measures
 while True:
+    #Initialization of sensors
     S1 = 0
     S2 = 0
     S3 = 0
@@ -79,6 +72,7 @@ while True:
 
     t = 0
     while t<120:
+        #Reading of each adc channel
 	A1 = mcp.read_adc(2)
 	A2 = mcp.read_adc(7)
 	A3 = mcp.read_adc(3)
@@ -87,6 +81,7 @@ while True:
 	V1 = mcp.read_adc(4)
 	V2 = mcp.read_adc(5)
 	V3 = mcp.read_adc(6)
+	#Sum of each measure
 	S1 = S1 + A1
 	S2 = S2 + A2
 	S3 = S3 + A3
@@ -98,33 +93,44 @@ while True:
 
 	t = t + 1
     m = 120
-
-    S_1 = (((((S1/m)+7)*(5.0/1023))-2.5)/(0.095))
-    S_2 = (((((S2/m)+5)*(5.0/1023))-2.5)/(0.063))
-    S_3 = (((((S3/m)+5)*(5.0/1023))-2.5)/(0.090))
-    S_4 = (((((S4/m)+5)*(5.0/1023))-2.5)/(0.095))
-    S_5 = (((((S5/m)+5)*(5.0/1023))-2.5)/(0.33))
-    S_6 = (((S6/m)*(5.0/1023))*(37000.0/7500.0))*14.4594417077 
-    S_7 = (((S7/m)*(5.0/1023))*(37000.0/7500.0))*13.4594417077
+    #Value for zero adjustment of the sensors
+    Aju=12
+    #Conversion of digital value to analog
+    S_1 = (((((S1/m)-Aju)*(5.0/1023))-2.5)/(0.115))
+    S_2 = (((((S2/m)-Aju)*(5.0/1023))-2.5)/(0.115))
+    S_3 = (((((S3/m)-Aju)*(5.0/1023))-2.5)/(0.091))
+    S_4 = (((((S4/m)-Aju)*(5.0/1023))-2.5)/(0.115))
+    S_5 = (((((S5/m)-Aju)*(5.0/1023))-2.5)/(0.092))
+    S_6 = (((S6/m)*(5.0/1023))*(37000.0/7500.0))*14.5 
+    S_7 = (((S7/m)*(5.0/1023))*(37000.0/7500.0))*12.5
     S_8 = ((S8/m)*(5.0/1023))*(37000.0/7500.0)
     
     p = 1.0
+    #Adjustment of source voltage sensor due to failure of a source
     while (p<10.0):
-        if (S_1>p and S_1<(p+1.0)):
-            S_6 = S_6+((3.2*p)-(p-1))
-            S_7 = S_7-1.5*(p-1)
-            S_8 = S_8-(p-1)/2
+        if (S_1>(p+0.5) and S_1<(p+1.5)):
+            S_6 = S_6+(2*p)
+            S_7 = S_7-(1.5*p)
+            S_8 = S_8-(p+1)/2
             break
-        p=p+1
+        p=p+1.0
+    #Condition that Current sensor of the first buck is zero, the voltage of the sources is zero
     if(S_1<0.05):
         S_6=0.0
+    #Condition for disconnection of non-essential load
+    #If the current sensor values of the first buck and the solar panel
+    # are lower than a set value and the inverter sensor current is greater than a set value
+    #you must disconnect the non-essential load
     if (S_1<0.5 and S_2<0.5 and S_5>0.09):
 	    GPIO.output(16, False)
 	    print("Carga desconectada")
-
+    #If the current sensor values of the first buck or solar panel are higher
+    #than a set value and the inverter sensor current is greater than a set value,
+    #you must disconnect the non-essential load
     elif (S_1>0.5 or S_2>0.5 and S_5>0.09): 
 	    GPIO.output(16, True)
 	    print("Carga conectada")
+    #Take values of each low current sensor
     v = ina.voltage()
     i = round(ina.current()/1000,2)
     p = ina.power()
@@ -140,22 +146,19 @@ while True:
     v3 = ina3.voltage()
     i3 = round(ina3.current()/1000,2)
     p3 = ina3.power()
-    #VD0_AB=round(0.0565*Ln(i)+0.779,1)
-    VD1_AB=round(0.0565*log(i1)+0.779,1)
-    VD2_AB=round(0.0565*log(i2)+0.779,1)
-    VD3_AB=round(0.0565*log(i3)+0.779,1)
-    PD1=str(round(VD1_AB*i1,1))
-    PD2=str(round(VD2_AB*i2,1))
-    PD3=str(round(VD3_AB*i3,1))
+    #Sum of the currents of each source
     If = i+i1+i2+i3
+    #Power of the source
     Pf = str(round(If*S_6,2))
-    V5_AB=round(0.0565*log(S_1)+0.779,1)
-    VAfterBuck=round(S_7+V5_AB,1)
-    PAfterBuck=str(round(VAfterBuck*S_1,1))
+    #Calculation of panel voltage
     Vp = ((2.5+S_2*0.1)*6)
+    #Power of the panel
     Pp = str(round(Vp*S_2,2))
-    Ib = S_5-S_3
+    #Calculation of battery current
+    Ib = S_5-S_3+S_4
+    #Power of the battery
     Pb = str(abs(round(S_8*Ib,2)))
+    #Conversion to string
     i=str(i)
     i1=str(i1)
     i2=str(i2)
@@ -168,31 +171,8 @@ while True:
     S_6=str(round(S_6,2))
     S_7=str(round(S_7,2))
     S_8=str(round(S_8,2))
-           #<<<<<<<< Cambiar
-##    imagen_de_fondo = PhotoImage(file="Esq.gif")
-##    fondo = Label(root, image=imagen_de_fondo)
-    ##D0.set(PD0)
-    D1.set(PD1)
-    D2.set(PD2)
-    D3.set(PD3)
-    PBB.set(Pf)
-    PAB.set(PAfterBuck)
-    Sensor1Label=Label(Frame,text="PDiodo 1").grid(row=0, column=0)
-    cuadro1=Entry(Frame, textvariable=0).grid(row=0, column=1)
-    Sensor2Label=Label(Frame,text="PDiodo 2").grid(row=1, column=0)
-    cuadro2=Entry(Frame, textvariable=D1).grid(row=1, column=1)
-    Sensor3Label=Label(Frame,text="PDiodo 3").grid(row=2, column=0)
-    cuadro3=Entry(Frame, textvariable=D2).grid(row=2, column=1)
-    Sensor4Label=Label(Frame,text="PDiodo 4").grid(row=3, column=0)
-    cuadro4=Entry(Frame, textvariable=D3).grid(row=3, column=1)
-    Sensor5Label=Label(Frame,text="PAntesBuck ").grid(row=4, column=0)
-    cuadro5=Entry(Frame, textvariable=PBB).grid(row=4, column=1)
-    Sensor6Label=Label(Frame,text="PDespuesBuck ").grid(row=5, column=0)
-    cuadro6=Entry(Frame, textvariable=PAB).grid(row=5, column=1)
-    
-    root.title("Interfaz Nodo 611")
-    root.update()
-    #Vistos de izquierda a derecha
+    #Print values of each sensor
+    #Sensors viewed from left to right and from bottom to top
     print("Corriente sensor 1 = "+i)   ## Sensor de corriente 1 de I2C
     print("Corriente sensor 2 = "+i1)	## Sensor de corriente 2 de I2C
     print("Corriente sensor 3 = "+i2)	## Sensor de corriente 3 de I2C
@@ -211,6 +191,7 @@ while True:
     print("Potencia de la bateria = "+Pb)
     a=a+1	
     print("Iteracion ="+str(a))
+    #Sending to the database
     try:
         response6 = requests.get('http://104.236.0.105:8080/voltage_sensors?voltage1=%s&voltage2=%s&voltage3=%s&create=%s'%(S_6,S_7,S_8, str(date.now())),
                             auth=requests.auth.HTTPBasicAuth(

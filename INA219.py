@@ -1,8 +1,11 @@
+#import modules
 from time import sleep
 from ina219 import INA219
 import time
 t=0
+#Cycle for to take measures
 while True:
+    #Sensor and I2C configuration
     ina1 = INA219(shunt_ohms=0.1,
                   max_expected_amps = 2.0,
                   address=0x40)
@@ -33,6 +36,7 @@ while True:
                   shunt_adc=ina4.ADC_128SAMP)
     t=t+1
     print(t)
+    #Take and print values of each low current sensor 
     v1  = ina1.voltage()
     i1 = ina1.current()/1000
     p1 = ina1.power()
