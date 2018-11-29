@@ -7,7 +7,7 @@ import minimalmodbus
 import serial
 import requests
 from datetime import datetime as date
-SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB0', 1) # port name, slave add$ 
+SharkMeter = minimalmodbus.Instrument('/dev/ttyUSB1', 1) # port name, slave add$ 
 print(SharkMeter)
 
 ## Voltaje de linea A con linea B
